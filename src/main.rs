@@ -20,18 +20,17 @@ fn handle_connection(mut stream: TcpStream) {
     // turn TCP Stream into a buffered reader
     let buf_reader = BufReader::new(&stream);
 
-    // split each line of the request into a vectory until line is empty aka \n\n
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+    // do some unwrap magic to get the first line of the request
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
 
-    let status_line = "HTTP/1.1 200 OK";
-    let contents = fs::read_to_string("hello.html").unwrap();
-    let length = contents.len();
+    // only want the '/' path nothing else
+    if request_line == "GET / HTTP/1.1" {
+        let status_line = "HTTP/1.1 200 OK";
+        let contents = fs::read_to_string("hello.html").unwrap();
+        let length = contents.len();
 
-    let response = format!("{status_line}\r\nCOntent-Length: {length}\r\n\r\n{contents}");
+        let response = format!("{status_line}\r\nCOntent-Length: {length}\r\n\r\n{contents}");
 
-    stream.write_all(response.as_bytes()).unwrap();
+        stream.write_all(response.as_bytes()).unwrap();
+    }
 }
