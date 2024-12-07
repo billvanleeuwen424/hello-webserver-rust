@@ -4,15 +4,20 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
+use hello_webserver::ThreadPool;
+
 fn main() {
     // create socket, bind to in
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+
+    // handle up to 4 requests at once
+    let pool = ThreadPool::new(4);
 
     // listen on the socket
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         // handle stream coming from the connection
-        handle_connection(stream);
+        pool.execute(|| handle_connection(stream));
     }
 }
 
