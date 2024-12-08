@@ -8,7 +8,8 @@ pub struct ThreadPool {
     sender: mpsc::Sender<Job>,
 }
 
-struct Job;
+// defined a 'boxed' closure (a pointer to a function, stored on the heap)
+type Job = Box<dyn FnOnce() + Send + 'static>;
 
 impl ThreadPool {
     /// create a new ThreadPool.
@@ -49,6 +50,9 @@ impl ThreadPool {
         //  - 'static, lifetime of all data in the closure should last as long as the program
         F: FnOnce() + Send + 'static,
     {
+        let job: Job = Box::new(f);
+
+        self.sender.send(job).unwrap();
     }
 }
 
@@ -59,9 +63,14 @@ struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
-        let thread = thread::spawn(|| {
-            // the thread will spawn waiting on the FIFO for a 'Job' (closure) to come
-            receiver;
+        let thread = thread::spawn(move || loop {
+            // grab the mutex, unwrap the error, receive from the FIFO, unwrap that too
+            let job = receiver.lock().unwrap().recv().unwrap();
+
+            println!("Worker {id} got a job; executing.");
+
+            // execute the job
+            job();
         });
 
         Worker { id, thread }
