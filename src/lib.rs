@@ -1,8 +1,14 @@
-use std::thread;
+use std::{
+    sync::{mpsc, Arc, Mutex},
+    thread,
+};
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
+    sender: mpsc::Sender<Job>,
 }
+
+struct Job;
 
 impl ThreadPool {
     /// create a new ThreadPool.
@@ -13,19 +19,34 @@ impl ThreadPool {
     ///
     /// The `new` function will panic if the size is zero
     pub fn new(size: usize) -> ThreadPool {
+        // check threadpool isn't of size 0
         assert!(size > 0);
+
+        // create the multiple producer, single consumer channel
+        let (sender, receiver) = mpsc::channel();
+
+        // atomic smart pointer to a mutex locking the job queue
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        // vector to hold the workers
         let mut workers = Vec::with_capacity(size);
 
-        // create threads and store them in the vector
+        // create threads and store them in the vector, clone the pointer
+        // to the receiver to give the new Worker reference to it
         for id in 0..size {
-            workers.push(Worker::new(id))
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        ThreadPool { workers }
+        // Return the newely created threadpool
+        ThreadPool { workers, sender }
     }
 
     pub fn execute<F>(&self, f: F)
     where
+        // the closure passed should implement FnOnce, Send, and have a static lifetime
+        //  - FnOnce, closure should have a trait that it can only run once
+        //  - Send, it should implement Send, being able to be passed between threads
+        //  - 'static, lifetime of all data in the closure should last as long as the program
         F: FnOnce() + Send + 'static,
     {
     }
@@ -37,8 +58,11 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize) -> Worker {
-        let thread = thread::spawn(|| {});
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(|| {
+            // the thread will spawn waiting on the FIFO for a 'Job' (closure) to come
+            receiver;
+        });
 
         Worker { id, thread }
     }
