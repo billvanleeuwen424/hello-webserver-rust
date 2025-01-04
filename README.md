@@ -4,7 +4,7 @@ Following along with [The Rust Programming Language](https://doc.rust-lang.org/b
 
 ## Description
 
-See my blog on this topic **(TO BE UPLOADED)**
+See [my blog](https://blog.billvanleeuwen.ca/exploring-rust-a-juniour-c-programmers-insight) on this topic.
 
 ### Dependencies
 
